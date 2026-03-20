@@ -1,3 +1,4 @@
+```
 WebServer/
 ├── src/
 │   ├── socket/       # Reactor 核心模块 (Server, Epoller)
@@ -9,5 +10,7 @@ WebServer/
 ├── resources/        # Web 静态资源目录 (HTML, CSS, JS, 错误页面等)
 │   ├── snake/        # 贪吃蛇游戏源码
 │   └── error/        # 403, 404 等状态码页面
+├── log_data/         # 运行时日志输出目录
 ├── main.cpp          # 服务器入口文件
 └── CMakeLists.txt    # CMake 构建脚本
+```
