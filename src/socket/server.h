@@ -14,11 +14,13 @@
 #include "epoller.h"
 #include "threadpool.h"
 #include "http_connect.h"
+#include "heaptimer.h"
 
 class Server {
 private:
     int listen_fd;                                      // 监听套接字
     in_port_t port;                                     // 端口号
+    int timeout;                                        // 超时时间 (毫秒)
     bool is_close;                                      // 服务器是否关闭
 
     uint32_t listen_events;                             // 监听套接字的事件模式 (LT/ET)
@@ -26,6 +28,7 @@ private:
 
     std::unique_ptr<Epoller> epoller;                   // epoll 管理模块
     std::unique_ptr<ThreadPool> threadpool;             // 并发线程池
+    std::unique_ptr<HeapTimer> timer;                   // 定时器模块
     std::unordered_map<int, HttpConnect> clients;       // 全局连接哈希表，通过 fd 映射 HttpConnect
 
     // 初始化相关
@@ -56,8 +59,8 @@ public:
     static constexpr int MIN_PORT = 1024;            // 最小端口号 (1024以下为系统保留端口)
     static constexpr int MAX_PATH_LEN = 256;         // 获取当前工作目录时的最大路径长度
 
-    // 初始化服务器：端口、触发模式、线程池大小
-    Server(in_port_t _port, int _mode, int _number);
+    // 初始化服务器：端口、触发模式、超时时间、线程池大小
+    Server(in_port_t _port, int _mode, int _timeout, int _number);
     ~Server();
 
     // 启动服务器的主事件循环

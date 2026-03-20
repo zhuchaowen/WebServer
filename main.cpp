@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
     try {
         // 初始化 Server 实例
         // 参数设计：(端口号, 触发模式(1代表LT+ET), 线程池大小)
-        Server server(port, 1, 8);
+        Server server(port, 1, 6000, 8);
 
         // 启动主线程 Reactor 事件循环 (死循环，除非发生严重错误)
         server.start();

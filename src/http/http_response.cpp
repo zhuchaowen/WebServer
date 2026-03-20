@@ -157,6 +157,14 @@ void HttpResponse::add_content(Buffer& buff)
         error_content(buff, "File NotFound!"); 
         return; 
     }
+
+    // 增加 MAP_FAILED 的判断
+    void* mm_ret = mmap(nullptr, mm_file_stat.st_size, PROT_READ, MAP_PRIVATE, src_fd, 0);
+    if (mm_ret == MAP_FAILED) {
+        error_content(buff, "File Read Error!");
+        close(src_fd);
+        return;
+    }
     
     // 将文件映射到内存，提高文件发送效率 (配合 writev 零拷贝)
     // PROT_READ 表示映射区域可读；MAP_PRIVATE 表示建立一个写入时拷贝的私有映射

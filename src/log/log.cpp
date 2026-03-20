@@ -95,27 +95,29 @@ void Log::write(int _level, const char* _format, ...)
     struct tm t = *sys_time;
 
     // 日志按天轮转或按最大行数分割
+    // 先直接用普通的方式预判，如果要滚动，再严格加锁
     if (today != t.tm_mday || (line_count && (line_count % MAX_LINES == 0))) {
-        std::unique_lock<std::mutex> lock(mtx);
-        lock.unlock();
-        
-        char new_file[LOG_NAME_LEN];
-        char tail[36] = {0};
-        snprintf(tail, 36, "%04d_%02d_%02d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
+        std::lock_guard<std::mutex> lock(mtx); // 严格加锁，绝不中途释放
 
-        if (today != t.tm_mday) {
-            snprintf(new_file, LOG_NAME_LEN - 72, "%s/%s%s", path, tail, suffix);
-            today = t.tm_mday;
-            line_count = 0;
-        } else {
-            snprintf(new_file, LOG_NAME_LEN - 72, "%s/%s-%d%s", path, tail, (line_count / MAX_LINES), suffix);
+        // 加锁后必须再次检查，防止其他线程已经滚动过了 (Double Check 思想)
+        if (today != t.tm_mday || (line_count && (line_count % MAX_LINES == 0))) {
+            char new_file[LOG_NAME_LEN];
+            char tail[36] = {0};
+            snprintf(tail, 36, "%04d_%02d_%02d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
+
+            if (today != t.tm_mday) {
+                snprintf(new_file, LOG_NAME_LEN - 72, "%s/%s%s", path, tail, suffix);
+                today = t.tm_mday;
+                line_count = 0;
+            } else {
+                snprintf(new_file, LOG_NAME_LEN - 72, "%s/%s-%d%s", path, tail, (line_count / MAX_LINES), suffix);
+            }
+
+            flush();
+            if (fp) { fclose(fp); }
+            fp = fopen(new_file, "a");
+            assert(fp != nullptr);
         }
-        
-        lock.lock();
-        flush();
-        fclose(fp);
-        fp = fopen(new_file, "a");
-        assert(fp != nullptr);
     }
 
     // 格式化当前这条日志的内容

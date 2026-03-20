@@ -2,10 +2,11 @@
 #include "log.h"
 #include <libgen.h>
 
-Server::Server(in_port_t _port, int _mode, int _number)
-    : listen_fd(-1), port(_port), is_close(false),
+Server::Server(in_port_t _port, int _mode, int _timeout, int _number)
+    : listen_fd(-1), port(_port), timeout(_timeout), is_close(false),
       epoller(std::make_unique<Epoller>()),
-      threadpool(std::make_unique<ThreadPool>(_number))
+      threadpool(std::make_unique<ThreadPool>(_number)),
+      timer(std::make_unique<HeapTimer>())
 {
     // 获取当前工作目录，设置给 HttpConnect 供解析文件用
     char cwd[MAX_PATH_LEN];
@@ -42,8 +43,15 @@ void Server::start()
     LOG_INFO("Resources Dir: %s", HttpConnect::root_dir.c_str());
 
     while (!is_close) {
+        // 如果开启了定时器，就获取最近一个定时器的超时时间作为 epoll_wait 的 timeout
+        // 这样既不会空转 CPU，又能在有人超时时准时醒来踢掉它
+        int time_ms = -1;
+        if (timeout > 0) {
+            time_ms = timer->get_next_tick();
+        }
+
         // 阻塞等待事件发生
-        int event_count = epoller->wait();
+        int event_count = epoller->wait(time_ms);
         
         for (int i = 0; i < event_count; i++) {
             int fd = epoller->get_event_fd(i);
@@ -141,7 +149,13 @@ void Server::add_client(int _fd, sockaddr_in _addr)
 {
     // 初始化 HTTP 对象
     clients[_fd].init(_fd, _addr); 
-    
+
+    // 如果是长连接模式且超时时间 > 0，为它挂载一个定时器
+    if (timeout > 0) {
+        // 绑定回调函数：当超时时，调用 close_connect(&clients[_fd])
+        timer->add(_fd, timeout, [this, client = &clients[_fd]] { close_connect(client); });
+    }
+
     epoller->add_fd(_fd, client_events); 
     // 客户端套接字设为非阻塞
     set_nonblock(_fd);
@@ -163,7 +177,9 @@ void Server::deal_listen()
         if (HttpConnect::user_count >= MAX_FD) {
             send_error(fd, "Server busy!");
             LOG_WARN("Client %d connected but Server is Busy!", fd);
-            return;
+
+            // 继续清空处于排队状态的 accept 队列
+            continue;
         }
 
         add_client(fd, addr);
@@ -188,12 +204,20 @@ void Server::send_error(int fd, const char* info)
 // 任务分发 (主线程执行)
 void Server::deal_read(HttpConnect* client) 
 {
+    if (timeout > 0) {
+        timer->adjust(client->get_fd(), timeout);
+    }
+
     // 将“读取并处理逻辑”打包扔进线程池，主线程绝不阻塞
     threadpool->add_task([this, client] { on_read(client); });
 }
 
 void Server::deal_write(HttpConnect* client) 
 {
+    if (timeout > 0) {
+        timer->adjust(client->get_fd(), timeout);
+    }
+
     // 将“发送数据”逻辑打包扔进线程池
     threadpool->add_task([this, client] { on_write(client); });
 }

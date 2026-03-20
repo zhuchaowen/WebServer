@@ -11,6 +11,7 @@ include_directories(
         ${PROJECT_SOURCE_DIR}/src/http
         ${PROJECT_SOURCE_DIR}/src/log
         ${PROJECT_SOURCE_DIR}/src/socket
+        ${PROJECT_SOURCE_DIR}/src/timer
         ${PROJECT_SOURCE_DIR}/src/utils
 )
 
