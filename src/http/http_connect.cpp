@@ -91,25 +91,26 @@ ssize_t HttpConnect::write(int* save_errno)
 
 bool HttpConnect::process() 
 {
-    // 每次处理新请求前，先重置请求解析器
-    request.init();
-    
     // 缓冲区没数据，直接返回
     if (read_buffer.readable_bytes() <= 0) {
         return false;
     }
     
-    // HttpRequest 进行协议解析
-    if (request.parse(read_buffer)) {
-        // 记录一次成功的 HTTP 请求访问
-        LOG_DEBUG("Request OK! fd: %d, Method: %s, Path: %s", fd, request.get_method().c_str(), request.get_path().c_str());
-        // 解析成功，初始化 HttpResponse 为 200 OK，并传入请求的资源路径
-        response.init(root_dir, request.get_path(), request.is_keep_alive(), 200);
-    } else {
-        // 记录一次非法的 HTTP 请求
+    // 解析 HTTP 报文
+    bool parse_success = request.parse(read_buffer);
+
+    if (!parse_success) {
+        // 格式错误，彻底失败
         LOG_WARN("Request Parse Failed! fd: %d", fd);
-        // 解析失败，初始化 HttpResponse 为 400 Bad Request
         response.init(root_dir, request.get_path(), false, 400);
+    } else if (!request.is_finish()) {
+        // parse_success == true 但还没达到 FINISH 状态
+        // 说明这是个半包，需要等下一次 epoll 读事件，什么都不做，继续监听 EPOLLIN
+        return false; 
+    } else {
+        // 完整且成功地解析完毕
+        LOG_DEBUG("Request OK! fd: %d, Method: %s, Path: %s", fd, request.get_method().c_str(), request.get_path().c_str());
+        response.init(root_dir, request.get_path(), request.is_keep_alive(), 200);
     }
     
     // HttpResponse 生成响应报文 (状态行、响应头)，并将其追加到写缓冲区

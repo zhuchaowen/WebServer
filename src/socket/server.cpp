@@ -256,6 +256,9 @@ void Server::on_write(HttpConnect* client) const
     if (client->is_write_complete()) {
         // 判断是否是长连接 (Keep-Alive)
         if (client->is_keep_alive()) {
+            // 响应彻底发完了，客户端还要继续，把解析器清空，迎接下一个请求
+            client->reset_request();
+
             // 是长连接，不断开，重置 socket 为监听读事件，等待下一条 HTTP 请求
             epoller->mod_fd(client->get_fd(), client_events | EPOLLIN);
             return;

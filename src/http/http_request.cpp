@@ -24,11 +24,22 @@ bool HttpRequest::parse(Buffer& buff)
 
     // 只要状态机没有走到 FINISH，且缓冲区里还有数据，就持续解析
     while (state != PARSE_STATE::FINISH && buff.readable_bytes()) {
-        // 在缓冲区中查找下一行的结尾 "\r\n"
-        const char* line_end = std::search(buff.peek(), buff.begin_write_const(), CRLF, CRLF + 2);
+        std::string line;
+        bool is_body = (state == PARSE_STATE::BODY);
         
-        // 提取这一行的字符串内容用于解析
-        std::string line(buff.peek(), line_end);
+        if (is_body) {
+            // 如果是读 Body，不用找 \r\n，直接全部提出来
+            line = buff.retrieve_all_to_str();
+        } else {
+            // 解析 Header 和 Request Line 时，寻找 \r\n
+            const char* line_end = std::search(buff.peek(), buff.begin_write_const(), CRLF, CRLF + 2);
+            if (line_end == buff.begin_write_const()) {
+                // 没找到 \r\n，说明头部的半个包还没到齐，提前退出等待下次网络读取
+                break; 
+            }
+            line = std::string(buff.peek(), line_end);
+            buff.retrieve_until(line_end + 2); // 移动游标跳过当前行和 \r\n
+        }
 
         switch (state) {
             case PARSE_STATE::REQUEST_LINE:
@@ -52,14 +63,6 @@ bool HttpRequest::parse(Buffer& buff)
             default:
                 break;
         }
-
-        // 如果已经读到了缓冲区末尾，跳出循环等待下一次数据到来
-        if (line_end == buff.begin_write_const()) { 
-            break; 
-        }
-
-        // 解析完一行后，将 Buffer 的读游标向后移动，跳过当前行和 \r\n
-        buff.retrieve_until(line_end + 2);
     }
 
     return true;
@@ -115,10 +118,21 @@ void HttpRequest::parse_header(const std::string& line)
 
 void HttpRequest::parse_body(const std::string& line) 
 {
-    body = line;
-    // 如果是 POST 请求，尝试解析表单数据
-    parse_post(); 
-    state = PARSE_STATE::FINISH;
+    // 采用追加模式，防止 Body 被 TCP 切割成了多段
+    body += line;
+
+    size_t content_len = 0;
+    if (headers.count("Content-Length")) {
+        try {
+            content_len = std::stoi(headers["Content-Length"]);
+        } catch (...) {}
+    }
+    
+    // 只有收集齐了 Content-Length 指定的数据大小，才算真正的完成
+    if (body.size() >= content_len) {
+        parse_post(); 
+        state = PARSE_STATE::FINISH;
+    }
 }
 
 void HttpRequest::parse_path() 

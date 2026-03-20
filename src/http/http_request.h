@@ -54,6 +54,8 @@ public:
     std::string& get_path() noexcept { return path; }
     const std::string& get_path() const noexcept { return path; }
     const std::string& get_version() const noexcept { return version; }
+    // 提供给外部判断状态机是否走到了尽头
+    bool is_finish() const { return state == PARSE_STATE::FINISH; }
 
     // 判断是否是长连接 (Keep-Alive)
     bool is_keep_alive() const;

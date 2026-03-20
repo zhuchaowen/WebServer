@@ -64,6 +64,12 @@ public:
 
     // 判断是否已经将准备好的响应头和文件全部发送完毕
     bool is_write_complete() const { return iov[0].iov_len + iov[1].iov_len == 0; }
+
+    // 提供给 Server 在长连接发送完毕后重置状态机
+    void reset_request() { request.init(); }
+
+    // 解析是否彻底完成
+    bool is_parse_finish() const { return request.is_finish(); }
 };
 
 #endif //WEBSERVER_HTTP_CONNECT_H
