@@ -55,6 +55,12 @@ public:
         cond_consumer.notify_all();
     }
 
+    // 唤醒消费者线程，让它尽快处理完队列中的剩余任务
+    void flush() 
+    {
+        cond_consumer.notify_one();
+    }
+
     size_t size()
     {
         std::lock_guard<std::mutex> lock(mtx);

@@ -15,7 +15,7 @@ Log::~Log()
 {
     if (write_thread && write_thread->joinable()) {
         while (!deque->empty()) {
-            // deque->flush(); // 等待队列里的内容写完
+            deque->flush(); // 等待队列里的内容写完
         }
         deque->close();
         write_thread->join();
@@ -68,8 +68,7 @@ void Log::init(int _level, const char* _path, const char* _suffix, int _max_queu
 
     // 拼装日志文件名：比如 ./log_data/2026_03_20.log
     char file_name[LOG_NAME_LEN] = {0};
-    snprintf(file_name, LOG_NAME_LEN - 1, "%s/%04d_%02d_%02d%s", 
-            path, t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, suffix);
+    snprintf(file_name, LOG_NAME_LEN - 1, "%s/%04d_%02d_%02d%s", path, t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, suffix);
 
     {
         std::lock_guard<std::mutex> lock(mtx);
@@ -156,10 +155,6 @@ void Log::write(int _level, const char* _format, ...)
             deque->push(buff.retrieve_all_to_str());
         } else {
             fputs(buff.peek(), fp); // 同步降级
-
-            // 如果是同步模式（或是队列满了被逼降级），也输出到终端
-            fputs(buff.peek(), stdout);
-            fflush(stdout);
         }
         buff.retrieve_all(); // 清空缓冲区留给下次使用
     }
@@ -168,12 +163,11 @@ void Log::write(int _level, const char* _format, ...)
 void Log::append_log_level_title(int _level)
 {
     switch (_level) {
-        // \033[...m 是终端控制字符，用于设置字体颜色
-        case 0: buff.append("\033[36m[debug]\033[0m: ", 18); break; // 青色
-        case 1: buff.append("\033[32m[info] \033[0m: ", 18); break; // 绿色
-        case 2: buff.append("\033[33m[warn] \033[0m: ", 18); break; // 黄色
-        case 3: buff.append("\033[31m[error]\033[0m: ", 18); break; // 红色
-        default:buff.append("\033[32m[info] \033[0m: ", 18); break;
+        case 0: buff.append("[debug]: ", 18); break; 
+        case 1: buff.append("[info]: ", 18); break; 
+        case 2: buff.append("[warn]: ", 18); break; 
+        case 3: buff.append("[error]: ", 18); break; 
+        default:buff.append("[info]: ", 18); break;
     }
 }
 
@@ -181,7 +175,7 @@ void Log::flush()
 {
     if (is_async) {
         // 唤醒消费者，尽力去刷
-        // deque->flush();
+        deque->flush();
     }
     std::lock_guard<std::mutex> lock(mtx);
     fflush(fp);
@@ -193,11 +187,6 @@ void Log::async_write()
     while (deque->pop(str)) {
         std::lock_guard<std::mutex> lock(mtx);
         fputs(str.c_str(), fp);
-
-        // 让后台线程把日志打印到标准输出(终端)
-        fputs(str.c_str(), stdout);
-        // 确保立即刷新到屏幕，不卡顿
-        fflush(stdout);
     }
 }
 
