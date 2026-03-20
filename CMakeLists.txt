@@ -1,50 +1,20 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 4.1.0)
 
-project(WebServer LANGUAGES CXX)
+project(WebServer)
 
-# 使用 C++17
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-add_compile_options(-Wall -Wextra -Wpedantic)
+add_compile_options(-Wall -O2)
 
-# =========================
-# base 模块
-# =========================
-add_library(base
-    base/util.cpp
+include_directories(
+        ${PROJECT_SOURCE_DIR}/src/http
+        ${PROJECT_SOURCE_DIR}/src/socket
+        ${PROJECT_SOURCE_DIR}/src/utils
 )
 
-target_include_directories(base
-    PUBLIC ${PROJECT_SOURCE_DIR}/base
-)
+file(GLOB_RECURSE SRC_FILES "${PROJECT_SOURCE_DIR}/src/*.cpp")
 
-# =========================
-# http 模块
-# =========================
-add_library(http
-    http/http.cpp
-)
+add_executable(server main.cpp ${SRC_FILES})
 
-target_include_directories(http
-    PUBLIC ${PROJECT_SOURCE_DIR}/http
-)
-
-target_link_libraries(http
-    PUBLIC base
-)
-
-# =========================
-# 主程序
-# =========================
-add_executable(server
-    main.cpp
-)
-
-target_link_libraries(server
-    PRIVATE http base
-)
-
-# Linux 需要 pthread
-target_link_libraries(server PRIVATE pthread)
+target_link_libraries(server pthread)

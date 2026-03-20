@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>贪吃蛇大作战</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="game-container">
+    <div class="header">
+        <h2>得分: <span id="score">0</span></h2>
+        <a href="/" class="logout-btn">退出登录</a>
+    </div>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <div class="controls">
+        <button id="restart-btn" style="display:none;">重新开始</button>
+        <p>使用键盘 W A S D 或 ↑ ↓ ← → 控制方向</p>
+    </div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
