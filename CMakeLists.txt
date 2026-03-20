@@ -9,6 +9,7 @@ add_compile_options(-Wall -O2)
 
 include_directories(
         ${PROJECT_SOURCE_DIR}/src/http
+        ${PROJECT_SOURCE_DIR}/src/log
         ${PROJECT_SOURCE_DIR}/src/socket
         ${PROJECT_SOURCE_DIR}/src/utils
 )

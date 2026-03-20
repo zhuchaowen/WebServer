@@ -2,7 +2,7 @@
 #include <csignal>
 #include <stdexcept>
 #include "server.h"
-#include "threadpool.h"
+#include "log.h"
 
 // 添加信号捕捉
 static void add_signal(int sig, void (*handler)(int), bool restart = true)
@@ -40,6 +40,15 @@ int main(int argc, char* argv[])
     // 注册信号处理机制
     add_signal(SIGPIPE, SIG_IGN);
 
+    // 初始化日志系统
+    // 参数：级别(1:INFO), 目录, 后缀, 异步队列大小(1024)
+    Log::instance()->init(1, "./log_data", ".log", 1024);
+
+    // 记录启动信息到文件
+    LOG_INFO("========== Server Init ==========");
+    LOG_INFO("Port: %d", port);
+    LOG_INFO("Log System: Async Mode, Level: INFO");
+
     try {
         // 初始化 Server 实例
         // 参数设计：(端口号, 触发模式(1代表LT+ET), 线程池大小)
@@ -49,9 +58,12 @@ int main(int argc, char* argv[])
         server.start();
     } catch (const std::exception& e) {
         // 捕捉初始化或运行期间抛出的严重异常
-        std::cerr << "Server Fatal Error: " << e.what() << std::endl;
+        // 记录致命异常到日志
+        LOG_ERROR("Server Fatal Error: %s", e.what());
         return EXIT_FAILURE;
     }
+
+    LOG_INFO("========== Server Stopped ==========");
 
     return EXIT_SUCCESS;
 }

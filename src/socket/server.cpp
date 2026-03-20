@@ -1,4 +1,5 @@
 #include "server.h"
+#include "log.h"
 #include <libgen.h>
 
 Server::Server(in_port_t _port, int _mode, int _number)
@@ -36,9 +37,9 @@ void Server::set_nonblock(int _fd)
 // 核心 Reactor 事件循环
 void Server::start() 
 {
-    std::cout << "========== Server Start ==========" << std::endl;
-    std::cout << "Port: " << port << std::endl;
-    std::cout << "Resources Dir: " << HttpConnect::root_dir << std::endl;
+    LOG_INFO("========== Server Start ==========");
+    LOG_INFO("Listen Port: %d", port);
+    LOG_INFO("Resources Dir: %s", HttpConnect::root_dir.c_str());
 
     while (!is_close) {
         // 阻塞等待事件发生
@@ -89,10 +90,12 @@ bool Server::init_socket()
     saddr.sin_addr.s_addr = htonl(INADDR_ANY);
     saddr.sin_port = htons(port);
     if (bind(listen_fd, reinterpret_cast<sockaddr *>(&saddr), sizeof(saddr)) < 0) {
+        LOG_ERROR("Bind Port %d Failed!", port);
         return false;
     }
     
     if (listen(listen_fd, MAX_LISTEN_BACKLOG) < 0) {
+        LOG_ERROR("Listen Port %d Failed!", port);
         return false;
     }
 
@@ -159,15 +162,19 @@ void Server::deal_listen()
         // 限制最大连接数
         if (HttpConnect::user_count >= MAX_FD) {
             send_error(fd, "Server busy!");
+            LOG_WARN("Client %d connected but Server is Busy!", fd);
             return;
         }
+
         add_client(fd, addr);
+        LOG_INFO("New Client Connected! fd: %d, IP: %s, Port: %d", fd, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
     } while (listen_events & EPOLLET);
 }
 
 void Server::close_connect(HttpConnect* client) const
 {
     assert(client);
+    LOG_INFO("Client Quit! fd: %d", client->get_fd());
     epoller->del_fd(client->get_fd()); // 从 epoll 树移除
     client->close_connect();           // 关闭底层 socket 并释放 mmap 内存
 }
@@ -200,6 +207,7 @@ void Server::on_read(HttpConnect* client) const
     
     if (ret <= 0 && save_errno != EAGAIN) {
         // 读出错或断开
+        LOG_DEBUG("Client fd: %d read error or disconnected.", client->get_fd());
         close_connect(client);
         return;
     }

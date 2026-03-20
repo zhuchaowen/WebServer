@@ -1,4 +1,5 @@
 #include "http_connect.h"
+#include "log.h"
 
 // 静态成员变量初始化
 int HttpConnect::epoll_fd = -1;
@@ -100,9 +101,13 @@ bool HttpConnect::process()
     
     // HttpRequest 进行协议解析
     if (request.parse(read_buffer)) {
+        // 记录一次成功的 HTTP 请求访问
+        LOG_DEBUG("Request OK! fd: %d, Method: %s, Path: %s", fd, request.get_method().c_str(), request.get_path().c_str());
         // 解析成功，初始化 HttpResponse 为 200 OK，并传入请求的资源路径
         response.init(root_dir, request.get_path(), request.is_keep_alive(), 200);
     } else {
+        // 记录一次非法的 HTTP 请求
+        LOG_WARN("Request Parse Failed! fd: %d", fd);
         // 解析失败，初始化 HttpResponse 为 400 Bad Request
         response.init(root_dir, request.get_path(), false, 400);
     }

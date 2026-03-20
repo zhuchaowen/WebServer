@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include "log.h"
 
 // 全局静态字典
 // MIME 类型
@@ -74,10 +75,12 @@ void HttpResponse::make_response(Buffer& buff)
     
     if (stat(full_path.data(), &mm_file_stat) < 0 || S_ISDIR(mm_file_stat.st_mode)) {
         // 找不到文件或请求的是目录
-        code = 404; 
+        code = 404;
+        LOG_WARN("File Not Found: %s", (root_dir + path).c_str());
     } else if (!(mm_file_stat.st_mode & S_IROTH)) {
         // 没有读取权限
-        code = 403; 
+        code = 403;
+        LOG_WARN("File Forbidden: %s", (root_dir + path).c_str());
     } else if (code == -1) { 
         code = 200;
     }
