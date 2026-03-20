@@ -57,9 +57,9 @@ void Buffer::ensure_writable(size_t len)
 ssize_t Buffer::read_fd(int fd, int* save_errno) noexcept
 {
     // 核心：分散读取 (Scatter Read) 机制
-    // 在栈上分配 64KB 的额外空间。栈内存分配极快，退出作用域自动释放。
-    // 目的：一次尽可能多地读取数据，减少系统调用(read)的次数。
-    char buff[65536];
+    // 在栈上分配 STACK_SPACE 字节的额外空间。栈内存分配极快，退出作用域自动释放
+    // 目的：一次尽可能多地读取数据，减少系统调用(read)的次数
+    char buff[STACK_SPACE];
 
     iovec iov[2];
     const size_t writable = writable_bytes();
@@ -68,11 +68,11 @@ ssize_t Buffer::read_fd(int fd, int* save_errno) noexcept
     iov[0].iov_base = begin_write();
     iov[0].iov_len = writable;
     
-    // 第二块：指向栈上的 64KB 临时大数组
+    // 第二块：指向栈上的 STACK_SPACE 字节临时大数组
     iov[1].iov_base = buff;
     iov[1].iov_len = sizeof(buff);
 
-    // 如果 Buffer 剩下的空间小于 64KB，就同时使用这两块内存 (iov[0] 满了就会写到 iov[1])
+    // 如果 Buffer 剩下的空间小于 STACK_SPACE 字节，就同时使用这两块内存 (iov[0] 满了就会写到 iov[1])
     // 如果 Buffer 空间本身就很大，就没必要用栈空间了
     const ssize_t len = readv(fd, iov, 2);
     

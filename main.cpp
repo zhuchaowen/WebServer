@@ -5,7 +5,7 @@
 #include "threadpool.h"
 
 // 添加信号捕捉
-static void add_signal(const int sig, void (*handler)(int), const bool restart = true)
+static void add_signal(int sig, void (*handler)(int), bool restart = true)
 {
     struct sigaction sa{};
 
@@ -39,11 +39,6 @@ int main(int argc, char* argv[])
 
     // 注册信号处理机制
     add_signal(SIGPIPE, SIG_IGN);
-
-    std::cout << "======================================" << std::endl;
-    std::cout << "  High-Performance WebServer Started  " << std::endl;
-    std::cout << "  Port       : " << port << std::endl;
-    std::cout << "======================================" << std::endl;
 
     try {
         // 初始化 Server 实例

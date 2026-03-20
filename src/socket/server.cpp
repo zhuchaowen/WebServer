@@ -7,8 +7,8 @@ Server::Server(in_port_t _port, int _mode, int _number)
       threadpool(std::make_unique<ThreadPool>(_number))
 {
     // 获取当前工作目录，设置给 HttpConnect 供解析文件用
-    char cwd[256];
-    if (!getcwd(cwd, 256)) {
+    char cwd[MAX_PATH_LEN];
+    if (!getcwd(cwd, MAX_PATH_LEN)) {
         throw std::runtime_error("getcwd");
     }
     HttpConnect::root_dir = std::string(dirname(cwd)) + "/resources/";
@@ -81,7 +81,7 @@ bool Server::init_socket()
     
     // 绑定
     sockaddr_in saddr{};
-    if (port > 65535 || port < 1024) {
+    if (port > MAX_PORT || port < MIN_PORT) {
         return false;
     }
     
@@ -92,7 +92,7 @@ bool Server::init_socket()
         return false;
     }
     
-    if (listen(listen_fd, 1024) < 0) {
+    if (listen(listen_fd, MAX_LISTEN_BACKLOG) < 0) {
         return false;
     }
 
@@ -156,8 +156,8 @@ void Server::deal_listen()
             return;
         }
         
-        // 限制最大连接数，这里简单设为 65535
-        if (HttpConnect::user_count >= 65535) {
+        // 限制最大连接数
+        if (HttpConnect::user_count >= MAX_FD) {
             send_error(fd, "Server busy!");
             return;
         }

@@ -18,7 +18,7 @@
 class Server {
 private:
     int listen_fd;                                      // 监听套接字
-    in_port_t port;                                     //
+    in_port_t port;                                     // 端口号
     bool is_close;                                      // 服务器是否关闭
 
     uint32_t listen_events;                             // 监听套接字的事件模式 (LT/ET)
@@ -49,6 +49,13 @@ private:
     // 设置文件描述符非阻塞
     static void set_nonblock(int _fd);
 public:
+    // 配置相关的静态常量
+    static constexpr int MAX_FD = 10000;             // 最大客户端连接数
+    static constexpr int MAX_LISTEN_BACKLOG = 4096;  // listen() 全连接队列最大长度
+    static constexpr int MAX_PORT = 65535;           // 最大端口号
+    static constexpr int MIN_PORT = 1024;            // 最小端口号 (1024以下为系统保留端口)
+    static constexpr int MAX_PATH_LEN = 256;         // 获取当前工作目录时的最大路径长度
+
     // 初始化服务器：端口、触发模式、线程池大小
     Server(in_port_t _port, int _mode, int _number);
     ~Server();

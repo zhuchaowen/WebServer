@@ -19,6 +19,8 @@ private:
     std::atomic<std::size_t> read_pos;  // 读游标
     std::atomic<std::size_t> write_pos; // 写游标
 
+    static constexpr int STACK_SPACE = 65536;
+
     // 获取底层 vector 数据块的绝对起始地址
     char* begin_ptr() noexcept { return &*buffer.begin(); }
     const char* begin_cptr() const noexcept { return &*buffer.begin(); }
