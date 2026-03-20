@@ -116,7 +116,7 @@ void Buffer::make_space(size_t len)
         // 容量其实是够的，只是前面的可读数据被取走后，前面空出了很大一块（内部碎片）
         // 把现存的未读数据整体往前挪动到 buffer 数组的头部 index = 0 处，这样就给后半部分腾出了连续的大块空间
         size_t readable = readable_bytes();
-        std::copy(begin_ptr() + read_pos, begin_ptr() + write_pos, begin_ptr());
+        memmove(begin_ptr(), begin_ptr() + read_pos, readable);
         
         // 重置游标
         read_pos = 0;

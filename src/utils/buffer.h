@@ -6,6 +6,7 @@
 #include <string>
 #include <atomic>
 #include <sys/uio.h>
+#include <cstring>
 #include <unistd.h>
 #include <algorithm>
 #include <cassert>

@@ -5,7 +5,6 @@
 #include <queue>
 #include <thread>
 #include <mutex>
-#include <atomic>
 #include <condition_variable>
 #include <functional>
 #include <stdexcept>
@@ -18,7 +17,7 @@ class ThreadPool {
 private:
     size_t max_queue_size;                      // 任务队列最大容量
 
-    std::atomic<bool> stop;                     // 线程池停止标志位
+    bool stop;                                  // 线程池停止标志位
 
     std::mutex mtx;                             // 保护共享资源(任务队列)的互斥锁
     std::condition_variable not_empty;          // 任务就绪(队列非空)条件变量
@@ -63,7 +62,14 @@ private:
     // 优雅地关闭线程池
     void shutdown()
     {
-        stop = true;
+        {
+            // 在锁的保护下修改标志位，保证与 worker 线程中的 wait 条件严格同步
+            std::lock_guard<std::mutex> lock(mtx);
+            if (stop) {
+                return; // 已经被关闭过，直接返回
+            }
+            stop = true;
+        }
 
         // 唤醒所有正在 wait 的工作线程
         not_empty.notify_all();

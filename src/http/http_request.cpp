@@ -1,5 +1,4 @@
 #include "http_request.h"
-#include <regex>
 
 void HttpRequest::init() noexcept 
 {
@@ -66,46 +65,51 @@ bool HttpRequest::parse(Buffer& buff)
     return true;
 }
 
-bool HttpRequest::parse_request_line(const std::string& line) 
+bool HttpRequest::parse_request_line(const std::string& line)
 {
-    // 使用正则表达式匹配请求行，例如：GET /index.html HTTP/1.1
-    std::regex patten("^([^ ]*) ([^ ]*) HTTP/([^ ]*)$");
-    std::smatch subMatch;
-    
-    if (std::regex_match(line, subMatch, patten)) {
-        method = subMatch[1];
-        path = subMatch[2];
-        version = subMatch[3];
+    // 找到第一个空格（分隔 method 和 path）
+    size_t pos1 = line.find(' ');
+    if (pos1 == std::string::npos) return false;
 
-        // 状态转移：接下来准备解析请求头
-        state = PARSE_STATE::HEADERS; 
+    // 找到第二个空格（分隔 path 和 version）
+    size_t pos2 = line.find(' ', pos1 + 1);
+    if (pos2 == std::string::npos) return false;
 
-        return true;
-    }
-    
-    return false;
+    method = line.substr(0, pos1);
+    path = line.substr(pos1 + 1, pos2 - pos1 - 1);
+
+    // 解析 HTTP 版本号 (跳过 "HTTP/")
+    size_t http_pos = line.find("HTTP/", pos2);
+    if (http_pos == std::string::npos) return false;
+    version = line.substr(http_pos + 5);
+
+    state = PARSE_STATE::HEADERS;
+    return true;
 }
 
-void HttpRequest::parse_header(const std::string& line) 
+void HttpRequest::parse_header(const std::string& line)
 {
-    // 遇到空行，说明头部字段解析完毕
-    if (line.empty()) {
-        if (method == "POST") {
-            // POST 请求需要继续解析 Body
-            state = PARSE_STATE::BODY; 
-        } else {
-            // GET 请求直接结束
-            state = PARSE_STATE::FINISH; 
-        }
-        
+    // 如果是空行，说明头部解析完毕，接下来是 Body
+    if (line.empty() || line == "\r") {
+        state = PARSE_STATE::BODY;
         return;
     }
-    
-    // 使用正则表达式提取 Header 的 Key 和 Value，例如：Connection: keep-alive
-    std::regex patten("^([^:]*): ?(.*)$");
-    std::smatch subMatch;
-    if (std::regex_match(line, subMatch, patten)) {
-        headers[subMatch[1]] = subMatch[2];
+
+    // 查找冒号分隔符
+    size_t pos = line.find(':');
+    if (pos != std::string::npos) {
+        std::string key = line.substr(0, pos);
+
+        // 跳过冒号后面的前导空格
+        size_t value_start = pos + 1;
+        while (value_start < line.size() && (line[value_start] == ' ' || line[value_start] == '\t')) {
+            value_start++;
+        }
+
+        headers[key] = line.substr(value_start);
+    } else {
+        // 如果没有冒号，说明可能是不规范的末尾行，直接进入 BODY 状态
+        state = PARSE_STATE::BODY;
     }
 }
 
