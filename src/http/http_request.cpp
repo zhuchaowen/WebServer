@@ -28,8 +28,16 @@ bool HttpRequest::parse(Buffer& buff)
         bool is_body = (state == PARSE_STATE::BODY);
         
         if (is_body) {
-            // 如果是读 Body，不用找 \r\n，直接全部提出来
-            line = buff.retrieve_all_to_str();
+            // 计算当前还缺多少字节的 Body
+            size_t content_len = 0;
+            if (headers.count("Content-Length")) {
+                content_len = std::stoi(headers["Content-Length"]);
+            }
+            // 只从 Buffer 中读取缺少的字节数，防止误吞下一次的 HTTP 请求（防 TCP 粘包）
+            size_t read_size = std::min(content_len - body.size(), buff.readable_bytes());
+            
+            line = std::string(buff.peek(), read_size);
+            buff.retrieve(read_size); // 游标向后移动实际读取的长度
         } else {
             // 解析 Header 和 Request Line 时，寻找 \r\n
             const char* line_end = std::search(buff.peek(), buff.begin_write_const(), CRLF, CRLF + 2);

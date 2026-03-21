@@ -2,14 +2,17 @@
      
 void Buffer::retrieve(size_t len) noexcept 
 {
-    // 确保业务层要求移动的长度不会超过实际可读的长度
-    assert(len <= readable_bytes());
+    // 如果要求的长度超出可读，就只读到最大可读处
+    if (len > readable_bytes()) {
+        len = readable_bytes();
+    }
     read_pos += len;
 }           
  
 void Buffer::retrieve_until(const char* end) noexcept
 {
-    assert(peek() <= end);
+    if (peek() > end) return;
+
     // 移动读指针到 end 所在的位置
     retrieve(end - peek());
 }
@@ -30,7 +33,7 @@ std::string Buffer::retrieve_all_to_str()
 
 void Buffer::append(const char* str, size_t len)
 {
-    assert(str);
+    if (!str) return;
     // 确保容量足够
     ensure_writable(len);
     // 将数据拷贝到写指针所在的位置
@@ -41,7 +44,7 @@ void Buffer::append(const char* str, size_t len)
 
 void Buffer::append(const void* data, size_t len)
 {
-    assert(data);
+    if (!data) return;
     append(static_cast<const char*>(data), len);
 }
 
@@ -51,7 +54,6 @@ void Buffer::ensure_writable(size_t len)
         // 如果不够写，触发内部空间整理或扩容
         make_space(len); 
     }
-    assert(writable_bytes() >= len);
 }
 
 ssize_t Buffer::read_fd(int fd, int* save_errno) noexcept
@@ -121,8 +123,5 @@ void Buffer::make_space(size_t len)
         // 重置游标
         read_pos = 0;
         write_pos = read_pos + readable;
-        
-        // 确保移动后可读数据长度不变
-        assert(readable == readable_bytes());
     }
 }

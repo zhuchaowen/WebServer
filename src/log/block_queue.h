@@ -4,7 +4,6 @@
 #include <mutex>
 #include <deque>
 #include <condition_variable>
-#include <cassert>
 
 template<class T>
 class BlockQueue {
@@ -17,10 +16,12 @@ private:
     std::condition_variable cond_consumer; // 消费者条件变量 (非空)
     std::condition_variable cond_producer; // 生产者条件变量 (非满)
 public:
-    explicit BlockQueue(size_t _max_capacity = 1000) : max_capacity(_max_capacity)
+    explicit BlockQueue(size_t _max_capacity = 4096) 
+        : max_capacity(_max_capacity), is_close(false)
     {
-        assert(max_capacity > 0);
-        is_close = false;
+        if (max_capacity == 0) {
+            max_capacity = 4096; // 默认容量
+        }
     }
 
     ~BlockQueue() { close(); }

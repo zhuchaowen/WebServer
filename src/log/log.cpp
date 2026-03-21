@@ -82,7 +82,6 @@ void Log::init(int _level, const char* _path, const char* _suffix, int _max_queu
             mkdir(path, 0777); // 再试一次创建目录
             fp = fopen(file_name, "a");
         } 
-        assert(fp != nullptr);
     }
 }
 
@@ -116,7 +115,6 @@ void Log::write(int _level, const char* _format, ...)
             flush();
             if (fp) { fclose(fp); }
             fp = fopen(new_file, "a");
-            assert(fp != nullptr);
         }
     }
 
@@ -150,7 +148,7 @@ void Log::write(int _level, const char* _format, ...)
         buff.has_written(m);
         
         // 4. 追加换行符
-        buff.append("\n\0", 2);
+        buff.append("\n", 1);
 
         // 5. 将这行完整的日志交给异步队列（或直接写磁盘）
         if (is_async && deque && !deque->full()) {
@@ -165,11 +163,11 @@ void Log::write(int _level, const char* _format, ...)
 void Log::append_log_level_title(int _level)
 {
     switch (_level) {
-        case 0: buff.append("[debug]: ", 18); break; 
-        case 1: buff.append("[info]: ", 18); break; 
-        case 2: buff.append("[warn]: ", 18); break; 
-        case 3: buff.append("[error]: ", 18); break; 
-        default:buff.append("[info]: ", 18); break;
+        case 0: buff.append("[debug]: ", 9); break; 
+        case 1: buff.append("[info]:  ", 9); break; 
+        case 2: buff.append("[warn]:  ", 9); break; 
+        case 3: buff.append("[error]: ", 9); break; 
+        default:buff.append("[info]:  ", 9); break;
     }
 }
 

@@ -4,12 +4,10 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <atomic>
 #include <sys/uio.h>
 #include <cstring>
 #include <unistd.h>
 #include <algorithm>
-#include <cassert>
 
 class Buffer {
 private:
@@ -17,8 +15,8 @@ private:
     std::vector<char> buffer;
 
     // 使用 atomic 保证在多线程环境下获取游标状态的安全性
-    std::atomic<std::size_t> read_pos;  // 读游标
-    std::atomic<std::size_t> write_pos; // 写游标
+    size_t read_pos;  // 读游标
+    size_t write_pos; // 写游标
 
     static constexpr int STACK_SPACE = 65536;
 

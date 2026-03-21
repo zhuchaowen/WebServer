@@ -158,17 +158,25 @@ void HttpResponse::add_content(Buffer& buff)
         return; 
     }
 
-    // 增加 MAP_FAILED 的判断
-    void* mm_ret = mmap(nullptr, mm_file_stat.st_size, PROT_READ, MAP_PRIVATE, src_fd, 0);
-    if (mm_ret == MAP_FAILED) {
-        error_content(buff, "File Read Error!");
-        close(src_fd);
-        return;
+    // 只有文件大小大于 0 时，才进行 mmap 映射
+    if (mm_file_stat.st_size > 0) {
+        // PROT_READ 表示映射区域可读；MAP_PRIVATE 表示建立一个写入时拷贝的私有映射
+        void* mm_ret = mmap(nullptr, mm_file_stat.st_size, PROT_READ, MAP_PRIVATE, src_fd, 0);
+
+        // 增加 MAP_FAILED 的判断，防止 mmap 失败导致的错误访问
+        if (mm_ret == MAP_FAILED) {
+            error_content(buff, "File Read Error!");
+            close(src_fd);
+            return;
+        }
+        
+        // 将文件映射到内存，提高文件发送效率 (配合 writev 零拷贝)
+        mm_file = static_cast<char *>(mm_ret);
+    } else {
+        // 文件为空时，mm_file 置空，add_content 中会通过 error_content 兜底
+        mm_file = nullptr; 
     }
     
-    // 将文件映射到内存，提高文件发送效率 (配合 writev 零拷贝)
-    // PROT_READ 表示映射区域可读；MAP_PRIVATE 表示建立一个写入时拷贝的私有映射
-    mm_file = static_cast<char *>(mmap(nullptr, mm_file_stat.st_size, PROT_READ, MAP_PRIVATE, src_fd, 0));
     // 映射完成后，底层文件描述符可以立即关闭，不影响内存映射
     close(src_fd); 
     

@@ -34,7 +34,7 @@ private:
     std::mutex mtx;                                 // 保护 fp_ 和 buff_ 的锁
 
     Log();
-    virtual ~Log();
+    ~Log();
 
     void append_log_level_title(int _level);
 
@@ -42,7 +42,7 @@ private:
     void async_write();
 public:
     // 初始化日志器：日志级别, 存放路径, 文件后缀, 阻塞队列容量
-    void init(int _level, const char* _path = "./log_data", const char* _suffix = ".log", int _max_queue_capacity = 1024);
+    void init(int _level, const char* _path = "./log_data", const char* _suffix = ".log", int _max_queue_capacity = 4096);
 
     // 单例模式获取实例
     static Log* instance();

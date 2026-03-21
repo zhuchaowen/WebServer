@@ -6,7 +6,6 @@
 #include <chrono>
 #include <functional>
 #include <vector>
-#include <cassert>
 
 using timeout_callback = std::function<void()>;
 using time_clock = std::chrono::high_resolution_clock;
@@ -31,7 +30,7 @@ private:
     std::unordered_map<int, size_t> ref; 
 
     // 堆的内部操作：向上调整和向下调整
-    void del(size_t i);
+    void remove(size_t i);
     void sift_up(size_t i);
     bool sift_down(size_t i, size_t n);
     void swap_node(size_t i, size_t j);

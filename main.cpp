@@ -41,8 +41,8 @@ int main(int argc, char* argv[])
     add_signal(SIGPIPE, SIG_IGN);
 
     // 初始化日志系统
-    // 参数：级别(1:INFO), 目录, 后缀, 异步队列大小(1024)
-    Log::instance()->init(1, "./log_data", ".log", 1024);
+    // 参数：级别(1:INFO), 目录, 后缀, 异步队列大小
+    Log::instance()->init(1, "./log_data", ".log", 4096);
 
     // 记录启动信息到文件
     LOG_INFO("========== Server Init ==========");

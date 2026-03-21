@@ -189,7 +189,7 @@ void Server::deal_listen()
 
 void Server::close_connect(HttpConnect* client) const
 {
-    assert(client);
+    if (!client) return;
     LOG_INFO("Client Quit! fd: %d", client->get_fd());
     epoller->del_fd(client->get_fd()); // 从 epoll 树移除
     client->close_connect();           // 关闭底层 socket 并释放 mmap 内存
@@ -208,8 +208,12 @@ void Server::deal_read(HttpConnect* client)
         timer->adjust(client->get_fd(), timeout);
     }
 
-    // 将“读取并处理逻辑”打包扔进线程池，主线程绝不阻塞
-    threadpool->add_task([this, client] { on_read(client); });
+    // 将“读取并处理逻辑”打包扔进线程池
+    // 如果线程池爆满导致任务被丢弃，立刻记录日志并主动断开连接
+    if (!threadpool->add_task([this, client] { on_read(client); })) {
+        LOG_WARN("ThreadPool is FULL! Drop read task for fd: %d", client->get_fd());
+        close_connect(client);
+    }
 }
 
 void Server::deal_write(HttpConnect* client) 
@@ -219,7 +223,11 @@ void Server::deal_write(HttpConnect* client)
     }
 
     // 将“发送数据”逻辑打包扔进线程池
-    threadpool->add_task([this, client] { on_write(client); });
+    // 如果线程池爆满导致任务被丢弃，立刻记录日志并主动断开连接
+    if (!threadpool->add_task([this, client] { on_write(client); })) {
+        LOG_WARN("ThreadPool is FULL! Drop write task for fd: %d", client->get_fd());
+        close_connect(client);
+    }
 }
 
 // 工作线程核心逻辑 (在 ThreadPool 中执行)

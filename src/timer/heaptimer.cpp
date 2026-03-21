@@ -2,8 +2,7 @@
 
 void HeapTimer::swap_node(size_t i, size_t j) 
 {
-    assert(i < heap.size());
-    assert(j < heap.size());
+    if (i >= heap.size() || j >= heap.size()) return;
     
     std::swap(heap[i], heap[j]);
     
@@ -14,7 +13,7 @@ void HeapTimer::swap_node(size_t i, size_t j)
 
 void HeapTimer::sift_up(size_t i) 
 {
-    assert(i < heap.size());
+    if (i >= heap.size()) return;
     
     size_t parent = (i - 1) / 2;
     while (i > 0 && heap[i] < heap[parent]) {
@@ -26,8 +25,7 @@ void HeapTimer::sift_up(size_t i)
 
 bool HeapTimer::sift_down(size_t i, size_t n) 
 {
-    assert(i < heap.size());
-    assert(n <= heap.size());
+    if (i >= heap.size() || n > heap.size()) return false;
     
     size_t index = i;
     size_t child = index * 2 + 1;
@@ -47,13 +45,12 @@ bool HeapTimer::sift_down(size_t i, size_t n)
     return index > i;
 }
 
-void HeapTimer::del(size_t index) 
+void HeapTimer::remove(size_t index) 
 {
-    assert(index < heap.size());
+    if (heap.empty() || index >= heap.size()) return;
     
     // 将要删除的节点与队尾节点交换
     size_t n = heap.size() - 1;
-    assert(index <= n);
     
     if (index < n) {
         swap_node(index, n);
@@ -70,7 +67,7 @@ void HeapTimer::del(size_t index)
 
 void HeapTimer::add(int id, int timeout, const timeout_callback& cb) 
 {
-    assert(id >= 0);
+    if (id < 0) return;
     
     size_t i;
     if (ref.count(id)) {
@@ -92,7 +89,7 @@ void HeapTimer::add(int id, int timeout, const timeout_callback& cb)
 
 void HeapTimer::adjust(int id, int timeout)
 {
-    assert(id >= 0);
+    if (id < 0 || heap.empty() || ref.count(id) == 0) return;
 
     // 只有存在的定时器才能更新时间（比如活跃的 HTTP 请求）
     if (heap.empty() || ref.count(id) == 0) {
@@ -111,7 +108,7 @@ void HeapTimer::do_work(int id)
     size_t i = ref[id];
     TimerNode node = heap[i];
     node.cb(); // 触发回调函数 (关闭连接)
-    del(i);   // 从堆中删除
+    remove(i);   // 从堆中删除
 }
 
 void HeapTimer::clear()
@@ -132,14 +129,14 @@ void HeapTimer::tick()
             break; 
         }
         node.cb();
-        del(0);
+        remove(0);
     }
 }
 
 int HeapTimer::get_next_tick()
 {
     tick(); // 先清理掉当前已经超时的
-    size_t res = -1;
+    int res = -1;
     if (!heap.empty()) {
         // 计算堆顶元素还要多久超时
         res = std::chrono::duration_cast<ms>(heap.front().expires - time_clock::now()).count();
@@ -147,5 +144,5 @@ int HeapTimer::get_next_tick()
             res = 0;
         }
     }
-    return static_cast<int>(res);
+    return res;
 }
