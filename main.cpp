@@ -40,6 +40,9 @@ int main(int argc, char* argv[])
     // 注册信号处理机制
     add_signal(SIGPIPE, SIG_IGN);
 
+    // 防止 mmap 访问被截断的文件时引发服务端崩溃
+    add_signal(SIGBUS, SIG_IGN);
+
     // 初始化日志系统
     // 参数：级别(1:INFO), 目录, 后缀, 异步队列大小
     Log::instance()->init(1, "./log_data", ".log", 4096);

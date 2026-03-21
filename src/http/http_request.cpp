@@ -60,10 +60,6 @@ bool HttpRequest::parse(Buffer& buff)
                 break;
             case PARSE_STATE::HEADERS:
                 parse_header(line);
-                if (buff.readable_bytes() <= 2) {
-                    // 如果缓冲区只剩下 "\r\n"，说明没有 Body，解析可以直接结束 (例如普通的 GET 请求)
-                    state = PARSE_STATE::FINISH;
-                }
                 break;
             case PARSE_STATE::BODY:
                 parse_body(line);
@@ -102,7 +98,13 @@ void HttpRequest::parse_header(const std::string& line)
 {
     // 如果是空行，说明头部解析完毕，接下来是 Body
     if (line.empty() || line == "\r") {
-        state = PARSE_STATE::BODY;
+        // 根据是否有 Content-Length 或请求方法决定是否需要解析 Body
+        if (headers.count("Content-Length") && std::stoi(headers["Content-Length"]) > 0) {
+            state = PARSE_STATE::BODY;
+        } else {
+            // GET 或 没有 Body 的请求，直接完成
+            state = PARSE_STATE::FINISH;
+        }
         return;
     }
 
@@ -148,6 +150,12 @@ void HttpRequest::parse_path()
     // 如果用户直接访问根目录，默认重定向到主页
     if (path == "/") {
         path = "/index.html"; 
+    } else {
+        // 过滤目录穿越攻击 (过滤所有的 "../")
+        size_t pos;
+        while ((pos = path.find("../")) != std::string::npos) {
+            path.replace(pos, 3, "");
+        }
     }
 }
 

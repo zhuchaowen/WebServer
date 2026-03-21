@@ -205,7 +205,8 @@ void Server::send_error(int fd, const char* info)
 void Server::deal_read(HttpConnect* client) 
 {
     if (timeout > 0) {
-        timer->adjust(client->get_fd(), timeout);
+        // 任务放入线程池前，先赋予一个极大的超时时间(如 24小时)，防止执行期间被主线程定时器强杀
+        timer->adjust(client->get_fd(), 86400000);
     }
 
     // 将“读取并处理逻辑”打包扔进线程池
@@ -219,7 +220,8 @@ void Server::deal_read(HttpConnect* client)
 void Server::deal_write(HttpConnect* client) 
 {
     if (timeout > 0) {
-        timer->adjust(client->get_fd(), timeout);
+        // 任务放入线程池前，先赋予一个极大的超时时间(如 24小时)，防止执行期间被主线程定时器强杀
+        timer->adjust(client->get_fd(), 86400000);
     }
 
     // 将“发送数据”逻辑打包扔进线程池
@@ -252,6 +254,11 @@ void Server::on_read(HttpConnect* client) const
         // 请求不完整，继续监听读事件
         epoller->mod_fd(client->get_fd(), client_events | EPOLLIN);
     }
+
+    // 线程工作结束，恢复原本的超时时间
+    if (timeout > 0) {
+        timer->adjust(client->get_fd(), timeout);
+    }
 }
 
 void Server::on_write(HttpConnect* client) const
@@ -269,12 +276,24 @@ void Server::on_write(HttpConnect* client) const
 
             // 是长连接，不断开，重置 socket 为监听读事件，等待下一条 HTTP 请求
             epoller->mod_fd(client->get_fd(), client_events | EPOLLIN);
+
+            // 长连接保持阶段，重新续上原本的超时时间
+            if (timeout > 0) {
+                timer->adjust(client->get_fd(), timeout);
+            }
+
             return;
         }
     } else if (ret < 0 && save_errno == EAGAIN) {
         // 数据如果太大没发完，且系统缓冲区满了 (EAGAIN)
         // 让 epoll 继续监听写事件，下次再发
         epoller->mod_fd(client->get_fd(), client_events | EPOLLOUT);
+
+        // EAGAIN 没发完，恢复原有超时时间
+        if (timeout > 0) {
+            timer->adjust(client->get_fd(), timeout);
+        }
+
         return;
     }
     

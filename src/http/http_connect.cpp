@@ -55,17 +55,17 @@ ssize_t HttpConnect::write(int* save_errno)
 {
     ssize_t len = -1;
     while (!is_close) {
+        // 先检查是否所有数据都已经发送完毕，如果发完直接退出
+        if (iov[0].iov_len + iov[1].iov_len == 0) {
+            break;
+        }
+
         // 使用 writev 将响应头 (iov[0]) 和文件内容 (iov[1]) 集中发送
         len = writev(fd, iov, iov_count);
         if (len <= 0) {
             *save_errno = errno;
             break;
         }
-
-        // 如果所有数据都已经发送完毕，退出循环
-        if (iov[0].iov_len + iov[1].iov_len == 0) { 
-            break; 
-        } 
         
         // writev 返回的是本次总共发送的字节数 len，根据 len 手动调整 iov 的指针
         if (static_cast<size_t>(len) > iov[0].iov_len) {

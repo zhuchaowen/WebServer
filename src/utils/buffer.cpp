@@ -112,8 +112,9 @@ void Buffer::make_space(size_t len)
     // 剩余可写空间 + 前面已读废弃的空间 < 想要写入的 len
     // 说明这块 vector 彻底不够用，必须找系统重新申请更大的内存
     if (writable_bytes() + prependable_bytes() < len) {
-        // resize 会分配新内存，并把老数据拷过去
-        buffer.resize(write_pos + len + 1);
+        // 采用 1.5 倍扩容策略，而不是加多少扩多少
+        size_t new_size = buffer.size() + std::max(buffer.size() / 2, len);
+        buffer.resize(new_size);
     } else {
         // 容量其实是够的，只是前面的可读数据被取走后，前面空出了很大一块（内部碎片）
         // 把现存的未读数据整体往前挪动到 buffer 数组的头部 index = 0 处，这样就给后半部分腾出了连续的大块空间
