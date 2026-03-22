@@ -6,6 +6,7 @@
 #include <chrono>
 #include <functional>
 #include <vector>
+#include <mutex>
 
 using timeout_callback = std::function<void()>;
 using time_clock = std::chrono::high_resolution_clock;
@@ -28,6 +29,8 @@ private:
     std::vector<TimerNode> heap;
     // 映射 fd 到它在 heap 数组中的索引，实现 O(1) 的查找，便于极速更新定时器
     std::unordered_map<int, size_t> ref; 
+    // 新增一把互斥锁，用于保护 heap 和 ref
+    std::mutex mtx; 
 
     // 堆的内部操作：向上调整和向下调整
     void remove(size_t i);

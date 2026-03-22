@@ -67,6 +67,8 @@ void HeapTimer::remove(size_t index)
 
 void HeapTimer::add(int id, int timeout, const timeout_callback& cb) 
 {
+    std::lock_guard<std::mutex> lock(mtx);
+
     if (id < 0) return;
     
     size_t i;
@@ -89,6 +91,8 @@ void HeapTimer::add(int id, int timeout, const timeout_callback& cb)
 
 void HeapTimer::adjust(int id, int timeout)
 {
+    std::lock_guard<std::mutex> lock(mtx);
+
     if (id < 0 || heap.empty() || ref.count(id) == 0) return;
 
     // 只有存在的定时器才能更新时间（比如活跃的 HTTP 请求）
@@ -102,9 +106,12 @@ void HeapTimer::adjust(int id, int timeout)
 
 void HeapTimer::do_work(int id)
 {
+    std::lock_guard<std::mutex> lock(mtx);
+
     if (heap.empty() || ref.count(id) == 0) {
         return;
     }
+
     size_t i = ref[id];
     TimerNode node = heap[i];
     node.cb(); // 触发回调函数 (关闭连接)
@@ -113,12 +120,16 @@ void HeapTimer::do_work(int id)
 
 void HeapTimer::clear()
 {
+    std::lock_guard<std::mutex> lock(mtx);
+
     ref.clear();
     heap.clear();
 }
 
 void HeapTimer::tick()
 {
+    std::lock_guard<std::mutex> lock(mtx);
+
     // 清除所有已经超时的定时器
     if (heap.empty()) return;
     
@@ -135,7 +146,13 @@ void HeapTimer::tick()
 
 int HeapTimer::get_next_tick()
 {
-    tick(); // 先清理掉当前已经超时的
+    // 先清理掉当前已经超时的
+    // tick() 内部有自己的锁，执行完会自动释放
+    tick(); 
+
+    // 再次加锁保护后续的读取
+    std::lock_guard<std::mutex> lock(mtx); 
+    
     int res = -1;
     if (!heap.empty()) {
         // 计算堆顶元素还要多久超时
