@@ -1,5 +1,5 @@
-#ifndef WEBSERVER_THREADPOOL_H
-#define WEBSERVER_THREADPOOL_H
+#ifndef WEBSERVER_THREAD_POOL_H
+#define WEBSERVER_THREAD_POOL_H
 
 #include <vector>
 #include <queue>
@@ -65,6 +65,7 @@ private:
         {
             // 在锁的保护下修改标志位，保证与 worker 线程中的 wait 条件严格同步
             std::lock_guard<std::mutex> lock(mtx);
+
             if (stop) {
                 return; // 已经被关闭过，直接返回
             }
@@ -124,4 +125,5 @@ public:
     }
 };
 
-#endif //WEBSERVER_THREADPOOL_H
+
+#endif //WEBSERVER_THREAD_POOL_H

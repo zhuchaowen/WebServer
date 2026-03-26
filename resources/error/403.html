@@ -2,17 +2,65 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>403 - 权限拒绝</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>403 - Forbidden</title>
     <style>
-        body { background: #1a1a2e; color: #f9a826; font-family: sans-serif; text-align: center; padding-top: 20vh; }
-        h1 { font-size: 100px; margin: 0; }
-        a { display: inline-block; margin-top: 30px; padding: 10px 20px; background: #f9a826; color: #fff; text-decoration: none; border-radius: 5px; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .error-card {
+            background: #ffffff;
+            padding: 50px 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            max-width: 450px;
+            width: 90%;
+        }
+        .error-card h1 {
+            font-size: 80px;
+            margin: 0;
+            color: #e74c3c; /* 红色警告 */
+            letter-spacing: 2px;
+        }
+        .error-card h2 {
+            font-size: 24px;
+            margin: 10px 0 20px;
+            color: #2c3e50;
+        }
+        .error-card p {
+            color: #7f8c8d;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .error-card a {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #3498db;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .error-card a:hover {
+            background-color: #2980b9;
+        }
     </style>
 </head>
 <body>
-<h1>403</h1>
-<h2>Forbidden - 权限不足</h2>
-<p>服务器拒绝了你的访问请求。这通常是因为文件权限被锁定。</p>
-<a href="/">返回主基地</a>
+<div class="error-card">
+    <h1>403</h1>
+    <h2>Forbidden</h2>
+    <p>抱歉，您没有权限访问此资源。<br>服务器理解了您的请求，但拒绝执行。</p>
+    <a href="/">返回首页</a>
+</div>
 </body>
 </html>

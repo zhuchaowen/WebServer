@@ -1,19 +1,13 @@
 #ifndef WEBSERVER_SERVER_H
 #define WEBSERVER_SERVER_H
 
-#include <iostream>
-#include <unordered_map>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/socket.h>
+
 #include <netinet/in.h>
-#include <arpa/inet.h>
 #include <memory>
-#include <cstring>
 #include "epoller.h"
-#include "threadpool.h"
+#include "thread_pool.h"
 #include "http_connect.h"
-#include "heaptimer.h"
+#include "heap_timer.h"
 
 class Server {
 private:
@@ -28,7 +22,7 @@ private:
     std::unique_ptr<Epoller> epoller;                   // epoll 管理模块
     std::unique_ptr<ThreadPool> threadpool;             // 并发线程池
     std::unique_ptr<HeapTimer> timer;                   // 定时器模块
-    std::unordered_map<int, HttpConnect> clients;       // 全局连接哈希表，通过 fd 映射 HttpConnect
+    std::vector<HttpConnect> clients;                   // 客户端对象
 
     // 初始化相关
     bool init_socket();
@@ -37,7 +31,6 @@ private:
 
     // 断开连接与错误处理
     void close_connect(HttpConnect* client) const;
-    static void send_error(int fd, const char* info);
 
     // 事件处理的分发函数 (Reactor 核心)
     void deal_listen();                      // 处理新客户端连接
@@ -65,5 +58,6 @@ public:
     // 启动服务器的主事件循环
     void start();
 };
+
 
 #endif //WEBSERVER_SERVER_H

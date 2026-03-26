@@ -1,6 +1,7 @@
 #ifndef WEBSERVER_EPOLLER_H
 #define WEBSERVER_EPOLLER_H
 
+
 #include <unistd.h>
 #include <sys/epoll.h>
 #include <vector>
@@ -17,8 +18,6 @@ public:
 
     // 释放 epoll 文件描述符
     ~Epoller() { close(epoll_fd); }
-
-    // epoll 树节点操作接口
 
     // 将文件描述符 fd 及对应的监听事件注册到 epoll 树上
     bool add_fd(int fd, uint32_t events)
@@ -60,8 +59,6 @@ public:
         return epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, &event) == 0;
     }
 
-    // 核心等待与获取接口
-
     // 阻塞等待事件发生 (timeoutMs = -1 表示死等，= 0 表示非阻塞轮询)
     int wait(int timeout = -1)
     {
@@ -73,16 +70,23 @@ public:
     // 获取第 i 个触发事件的底层文件描述符
     int get_event_fd(size_t i) const noexcept
     {
-        if (i >= events.size()) return -1;
+        if (i >= events.size()) {
+            return -1;
+        }
+
         return events[i].data.fd;
     }
 
     // 获取第 i 个触发事件的具体事件类型
     uint32_t get_events(size_t i) const noexcept
     {
-        if (i >= events.size()) return 0;
+        if (i >= events.size()) {
+            return 0;
+        }
+
         return events[i].events;
     }
 };
+
 
 #endif //WEBSERVER_EPOLLER_H

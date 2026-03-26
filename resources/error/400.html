@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>400 - Bad Request</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f7f6;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .error-card {
+      background: #ffffff;
+      padding: 50px 40px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      text-align: center;
+      max-width: 450px;
+      width: 90%;
+    }
+    .error-card h1 {
+      font-size: 80px;
+      margin: 0;
+      color: #e74c3c; /* 红色警告 */
+      letter-spacing: 2px;
+    }
+    .error-card h2 {
+      font-size: 24px;
+      margin: 10px 0 20px;
+      color: #2c3e50;
+    }
+    .error-card p {
+      color: #7f8c8d;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+    .error-card a {
+      display: inline-block;
+      padding: 12px 24px;
+      background-color: #3498db;
+      color: #ffffff;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: bold;
+      transition: background-color 0.3s ease;
+    }
+    .error-card a:hover {
+      background-color: #2980b9;
+    }
+  </style>
+</head>
+<body>
+<div class="error-card">
+  <h1>400</h1>
+  <h2>Bad Request</h2>
+  <p>服务器无法理解该请求。<br>请检查您的请求语法或携带的参数是否正确。</p>
+  <a href="/">返回首页</a>
+</div>
+</body>
+</html>
