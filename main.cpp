@@ -50,8 +50,8 @@ int main(int argc, char* argv[])
     // 记录启动信息到文件
     LOG_INFO("========== Server Init ==========");
     LOG_INFO("Listen Port : %d", port);
-    LOG_INFO("Event Mode  : %s", "LT + ET"); // 对应您构造 Server 传的 1
-    LOG_INFO("Thread Pool : %d threads", 8); // 对应您传的 8
+    LOG_INFO("Event Mode  : %s", "LT + ET"); 
+    LOG_INFO("Thread Pool : %d threads", 8);
     LOG_INFO("Log System  : Async Mode, Level: INFO");
 
     try {
