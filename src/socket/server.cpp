@@ -43,9 +43,14 @@ void Server::set_nonblock(int _fd)
 // 核心 Reactor 事件循环
 void Server::start()
 {
-    LOG_INFO("========== Server Start ==========");
-    LOG_INFO("Listen Port: %d", port);
-    LOG_INFO("Resources Dir: %s", HttpConnect::root_dir.c_str());
+    LOG_INFO("========== WebServer Start ==========");
+    LOG_INFO("Listen Port       : %d", port);
+    LOG_INFO("Resources Dir     : %s", HttpConnect::root_dir.c_str());
+    LOG_INFO("Max Connections   : %d", MAX_FD); 
+    LOG_INFO("KeepAlive Timeout : %d ms", timeout);
+    LOG_INFO("Listen Event Mode : %s", (listen_events & EPOLLET ? "ET" : "LT"));
+    LOG_INFO("Client Event Mode : %s", (client_events & EPOLLET ? "ET" : "LT"));
+    LOG_INFO("=====================================");
 
     while (!is_close) {
         // 如果开启了定时器，就获取最近一个定时器的超时时间作为 epoll_wait 的 timeout
@@ -103,12 +108,12 @@ bool Server::init_socket()
     saddr.sin_addr.s_addr = htonl(INADDR_ANY);
     saddr.sin_port = htons(port);
     if (bind(listen_fd, reinterpret_cast<sockaddr *>(&saddr), sizeof(saddr)) < 0) {
-        LOG_ERROR("Bind Port %d Failed!", port);
+        LOG_ERROR("Bind Port %d Failed! Errno: %d, Reason: %s", port, errno, strerror(errno));
         return false;
     }
 
     if (listen(listen_fd, MAX_LISTEN_BACKLOG) < 0) {
-        LOG_ERROR("Listen Port %d Failed!", port);
+        LOG_ERROR("Listen Port %d Failed! Errno: %d, Reason: %s", port, errno, strerror(errno));
         return false;
     }
 
@@ -178,9 +183,12 @@ void Server::deal_listen()
             return;
         }
 
+        char ip_buf[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &addr.sin_addr, ip_buf, sizeof(ip_buf));
+
         // 限制最大连接数
         if (HttpConnect::user_count >= MAX_FD) {
-            LOG_WARNING("Client %d connected but Server is Busy!", fd);
+            LOG_WARNING("Server Busy! Rejecting new connection from IP: %s, Port: %d", ip_buf, ntohs(addr.sin_port));
 
             // 构造最精简的 503 响应报文，告诉客户端连接将立即关闭
             constexpr const char* busy_response = "HTTP/1.1 503 Service Unavailable\r\n"
@@ -199,9 +207,6 @@ void Server::deal_listen()
             continue;
         }
 
-        char ip_buf[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &addr.sin_addr, ip_buf, sizeof(ip_buf));
-
         add_client(fd, addr);
         LOG_INFO("New Client Connected! fd: %d, IP: %s, Port: %d", fd, ip_buf, ntohs(addr.sin_port));
     } while (listen_events & EPOLLET);
@@ -213,7 +218,7 @@ void Server::close_connect(HttpConnect* client) const
         return;
     }
 
-    LOG_INFO("Client Quit! fd: %d", client->get_fd());
+    LOG_INFO("Client Disconnected! fd: %d, IP: %s", client->get_fd(), client->get_ip());
 
     // 从 epoll 树移除
     epoller->del_fd(client->get_fd());
@@ -261,7 +266,7 @@ void Server::on_read(HttpConnect* client) const
 
     if (ret <= 0 && save_errno != EAGAIN) {
         // 读出错或断开
-        LOG_DEBUG("Client fd: %d read error or disconnected.", client->get_fd());
+        LOG_DEBUG("Client fd: %d (IP: %s) read error or disconnected. Errno: %d", client->get_fd(), client->get_ip(), save_errno);
         close_connect(client);
         return;
     }
@@ -287,6 +292,12 @@ void Server::on_write(HttpConnect* client) const
     // 调用 HttpConnect 的 write (利用 writev 发送 Buffer 和文件内存)
     ssize_t ret = client->write(&save_errno);
 
+    // 发生真正的底层报错 (返回 -1)，直接关闭
+    if (ret == -1) {
+        close_connect(client);
+        return;
+    }
+
     // 如果发送完了所有数据
     if (client->is_write_complete()) {
         // 判断是否是长连接 (Keep-Alive)
@@ -301,10 +312,13 @@ void Server::on_write(HttpConnect* client) const
             if (timeout > 0) {
                 timer->adjust(client->get_fd(), timeout);
             }
-
-            return;
+        } else {
+            // 不是长连接，直接关闭
+            close_connect(client);
         }
-    } else if (ret < 0 && save_errno == EAGAIN) {
+    } else {
+        // 运行到这里，说明 (ret >= 0) 且 (!is_write_complete)
+        // 这意味着一定是因为内核缓冲区满了 (EAGAIN) 而中途退出的
         // 数据如果太大没发完，且系统缓冲区满了 (EAGAIN)
         // 让 epoll 继续监听写事件，下次再发
         epoller->mod_fd(client->get_fd(), client_events | EPOLLOUT);
@@ -313,10 +327,5 @@ void Server::on_write(HttpConnect* client) const
         if (timeout > 0) {
             timer->adjust(client->get_fd(), timeout);
         }
-
-        return;
     }
-
-    // 既没发完又不是 EAGAIN，或者不是长连接，直接关闭
-    close_connect(client);
 }

@@ -66,6 +66,12 @@ ssize_t HttpConnect::read(int* save_errno)
             read_bytes += len;
         } else if (len == 0) {
             // 对方关闭连接
+            if (read_bytes > 0) {
+                // 如果本次循环已经读到了数据，应当跳出循环让上层 process 去解析
+                // 而不是直接 return 0 把数据丢弃
+                break; 
+            }
+
             return 0;
         } else {
             if (*save_errno == EAGAIN || *save_errno == EWOULDBLOCK) {
@@ -141,7 +147,9 @@ bool HttpConnect::process()
 
     if (!parse_success) {
         // 格式错误，彻底失败
-        LOG_WARNING("Request Parse Failed! fd: %d", fd);
+        // 记录解析失败的客户端 IP，可能是在被恶意扫描或受到非法格式攻击
+        LOG_WARNING("Request Parse Failed! fd: %d, IP: %s", fd, client_ip.c_str());
+
         response.init(request.get_code(), false, "", root_dir);
     } else if (!request.is_finish()) {
         // parse_success == true 但还没达到 FINISH 状态
@@ -149,7 +157,13 @@ bool HttpConnect::process()
         return false;
     } else {
         // 完整且成功地解析完毕
-        LOG_DEBUG("Request OK! fd: %d, Method: %s, Path: %s", fd, request.get_method().c_str(), request.get_path().c_str());
+        LOG_INFO("[Access Log] %s | %s %s | Response: %d | Keep-Alive: %s", 
+                 client_ip.c_str(), 
+                 request.get_method().c_str(), 
+                 request.get_path().c_str(), 
+                 200, 
+                 request.is_keep_alive() ? "ON" : "OFF");
+                 
         response.init(200, request.is_keep_alive(), request.get_path(), root_dir);
     }
 
